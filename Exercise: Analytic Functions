@@ -1,0 +1,959 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "d4fa4ed0",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004023,
+     "end_time": "2025-04-16T17:05:06.768176",
+     "exception": false,
+     "start_time": "2025-04-16T17:05:06.764153",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "**This notebook is an exercise in the [Advanced SQL](https://www.kaggle.com/learn/advanced-sql) course.  You can reference the tutorial at [this link](https://www.kaggle.com/alexisbcook/analytic-functions).**\n",
+    "\n",
+    "---\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f15e0f98",
+   "metadata": {
+    "papermill": {
+     "duration": 0.002423,
+     "end_time": "2025-04-16T17:05:06.773604",
+     "exception": false,
+     "start_time": "2025-04-16T17:05:06.771181",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Introduction\n",
+    "\n",
+    "Here, you'll use window functions to answer questions about the [Chicago Taxi Trips](https://www.kaggle.com/chicago/chicago-taxi-trips-bq) dataset.\n",
+    "\n",
+    "Before you get started, run the code cell below to set everything up."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "5a13b95d",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-16T17:05:06.780479Z",
+     "iopub.status.busy": "2025-04-16T17:05:06.779881Z",
+     "iopub.status.idle": "2025-04-16T17:06:12.145977Z",
+     "shell.execute_reply": "2025-04-16T17:06:12.145027Z"
+    },
+    "papermill": {
+     "duration": 65.374062,
+     "end_time": "2025-04-16T17:06:12.150358",
+     "exception": false,
+     "start_time": "2025-04-16T17:05:06.776296",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Collecting git+https://github.com/Kaggle/learntools.git\r\n",
+      "  Cloning https://github.com/Kaggle/learntools.git to /tmp/pip-req-build-y7l0bcu1\r\n",
+      "  Running command git clone --filter=blob:none --quiet https://github.com/Kaggle/learntools.git /tmp/pip-req-build-y7l0bcu1\r\n",
+      "  fatal: unable to access 'https://github.com/Kaggle/learntools.git/': Could not resolve host: github.com\r\n",
+      "  \u001b[1;31merror\u001b[0m: \u001b[1msubprocess-exited-with-error\u001b[0m\r\n",
+      "  \r\n",
+      "  \u001b[31m×\u001b[0m \u001b[32mgit clone --\u001b[0m\u001b[32mfilter\u001b[0m\u001b[32m=\u001b[0m\u001b[32mblob\u001b[0m\u001b[32m:none --quiet \u001b[0m\u001b[4;32mhttps://github.com/Kaggle/learntools.git\u001b[0m\u001b[32m \u001b[0m\u001b[32m/tmp/\u001b[0m\u001b[32mpip-req-build-y7l0bcu1\u001b[0m did not run successfully.\r\n",
+      "  \u001b[31m│\u001b[0m exit code: \u001b[1;36m128\u001b[0m\r\n",
+      "  \u001b[31m╰─>\u001b[0m See above for output.\r\n",
+      "  \r\n",
+      "  \u001b[1;35mnote\u001b[0m: This error originates from a subprocess, and is likely not a problem with pip.\r\n",
+      "\u001b[1;31merror\u001b[0m: \u001b[1msubprocess-exited-with-error\u001b[0m\r\n",
+      "\r\n",
+      "\u001b[31m×\u001b[0m \u001b[32mgit clone --\u001b[0m\u001b[32mfilter\u001b[0m\u001b[32m=\u001b[0m\u001b[32mblob\u001b[0m\u001b[32m:none --quiet \u001b[0m\u001b[4;32mhttps://github.com/Kaggle/learntools.git\u001b[0m\u001b[32m \u001b[0m\u001b[32m/tmp/\u001b[0m\u001b[32mpip-req-build-y7l0bcu1\u001b[0m did not run successfully.\r\n",
+      "\u001b[31m│\u001b[0m exit code: \u001b[1;36m128\u001b[0m\r\n",
+      "\u001b[31m╰─>\u001b[0m See above for output.\r\n",
+      "\r\n",
+      "\u001b[1;35mnote\u001b[0m: This error originates from a subprocess, and is likely not a problem with pip.\r\n",
+      "Using Kaggle's public dataset BigQuery integration.\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python3.11/dist-packages/google/cloud/bigquery/table.py:1727: UserWarning: BigQuery Storage module not found, fetch data with the REST endpoint instead.\n",
+      "  warnings.warn(\n"
+     ]
+    },
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Setup Complete\n"
+     ]
+    }
+   ],
+   "source": [
+    "# Get most recent checking code\n",
+    "!pip install -U -t /kaggle/working/ git+https://github.com/Kaggle/learntools.git\n",
+    "# Set up feedback system\n",
+    "from learntools.core import binder\n",
+    "binder.bind(globals())\n",
+    "from learntools.sql_advanced.ex2 import *\n",
+    "print(\"Setup Complete\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "846f9b99",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004189,
+     "end_time": "2025-04-16T17:06:12.158501",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:12.154312",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "The following code cell fetches the `taxi_trips` table from the `chicago_taxi_trips` dataset. We also preview the first five rows of the table.  You'll use the table to answer the questions below."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "6d1010aa",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-16T17:06:12.165651Z",
+     "iopub.status.busy": "2025-04-16T17:06:12.165195Z",
+     "iopub.status.idle": "2025-04-16T17:06:13.592656Z",
+     "shell.execute_reply": "2025-04-16T17:06:13.591635Z"
+    },
+    "papermill": {
+     "duration": 1.432847,
+     "end_time": "2025-04-16T17:06:13.594185",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:12.161338",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Using Kaggle's public dataset BigQuery integration.\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python3.11/dist-packages/pandas/io/formats/format.py:1458: RuntimeWarning: invalid value encountered in greater\n",
+      "  has_large_values = (abs_vals > 1e6).any()\n",
+      "/usr/local/lib/python3.11/dist-packages/pandas/io/formats/format.py:1459: RuntimeWarning: invalid value encountered in less\n",
+      "  has_small_values = ((abs_vals < 10 ** (-self.digits)) & (abs_vals > 0)).any()\n",
+      "/usr/local/lib/python3.11/dist-packages/pandas/io/formats/format.py:1459: RuntimeWarning: invalid value encountered in greater\n",
+      "  has_small_values = ((abs_vals < 10 ** (-self.digits)) & (abs_vals > 0)).any()\n",
+      "/usr/local/lib/python3.11/dist-packages/pandas/io/formats/format.py:1458: RuntimeWarning: invalid value encountered in greater\n",
+      "  has_large_values = (abs_vals > 1e6).any()\n",
+      "/usr/local/lib/python3.11/dist-packages/pandas/io/formats/format.py:1459: RuntimeWarning: invalid value encountered in less\n",
+      "  has_small_values = ((abs_vals < 10 ** (-self.digits)) & (abs_vals > 0)).any()\n",
+      "/usr/local/lib/python3.11/dist-packages/pandas/io/formats/format.py:1459: RuntimeWarning: invalid value encountered in greater\n",
+      "  has_small_values = ((abs_vals < 10 ** (-self.digits)) & (abs_vals > 0)).any()\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>unique_key</th>\n",
+       "      <th>taxi_id</th>\n",
+       "      <th>trip_start_timestamp</th>\n",
+       "      <th>trip_end_timestamp</th>\n",
+       "      <th>trip_seconds</th>\n",
+       "      <th>trip_miles</th>\n",
+       "      <th>pickup_census_tract</th>\n",
+       "      <th>dropoff_census_tract</th>\n",
+       "      <th>pickup_community_area</th>\n",
+       "      <th>dropoff_community_area</th>\n",
+       "      <th>...</th>\n",
+       "      <th>extras</th>\n",
+       "      <th>trip_total</th>\n",
+       "      <th>payment_type</th>\n",
+       "      <th>company</th>\n",
+       "      <th>pickup_latitude</th>\n",
+       "      <th>pickup_longitude</th>\n",
+       "      <th>pickup_location</th>\n",
+       "      <th>dropoff_latitude</th>\n",
+       "      <th>dropoff_longitude</th>\n",
+       "      <th>dropoff_location</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>515b9a6d5234a4d1fb559dca27b3e1cc541a342d</td>\n",
+       "      <td>4bb55b69e710d1792f5fd4888001f4ff0ce34040f976f8...</td>\n",
+       "      <td>2013-06-24 06:15:00+00:00</td>\n",
+       "      <td>2013-06-24 06:15:00+00:00</td>\n",
+       "      <td>60</td>\n",
+       "      <td>0.04</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>1</td>\n",
+       "      <td>77</td>\n",
+       "      <td>...</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Cash</td>\n",
+       "      <td>None</td>\n",
+       "      <td>42.009623</td>\n",
+       "      <td>-87.670167</td>\n",
+       "      <td>POINT (-87.67016685690001 42.0096228806)</td>\n",
+       "      <td>41.986712</td>\n",
+       "      <td>-87.663416</td>\n",
+       "      <td>POINT (-87.6634164054 41.9867117999)</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>b1142c1c2c66367edf9a8909815a171955954fb1</td>\n",
+       "      <td>a945379688097db2f2e6117c99b1431b6eba73c4bcfea8...</td>\n",
+       "      <td>2013-08-11 11:15:00+00:00</td>\n",
+       "      <td>2013-08-11 11:30:00+00:00</td>\n",
+       "      <td>960</td>\n",
+       "      <td>0.43</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>7</td>\n",
+       "      <td>3</td>\n",
+       "      <td>...</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Cash</td>\n",
+       "      <td>None</td>\n",
+       "      <td>41.922686</td>\n",
+       "      <td>-87.649489</td>\n",
+       "      <td>POINT (-87.6494887289 41.9226862843)</td>\n",
+       "      <td>41.965812</td>\n",
+       "      <td>-87.655879</td>\n",
+       "      <td>POINT (-87.6558787862 41.96581197)</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>1117a97ec6e4fc4444af5e4df4123859a84590bc</td>\n",
+       "      <td>332d91df72ca990499bcd315dda5decb444abfd0cb3875...</td>\n",
+       "      <td>2013-09-17 09:00:00+00:00</td>\n",
+       "      <td>2013-09-17 09:00:00+00:00</td>\n",
+       "      <td>180</td>\n",
+       "      <td>0.00</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>...</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Cash</td>\n",
+       "      <td>None</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>None</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>None</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>ca1131c8e2ba0ed7a2a606b416050a55cd411654</td>\n",
+       "      <td>332d91df72ca990499bcd315dda5decb444abfd0cb3875...</td>\n",
+       "      <td>2013-09-17 09:00:00+00:00</td>\n",
+       "      <td>2013-09-17 09:00:00+00:00</td>\n",
+       "      <td>60</td>\n",
+       "      <td>0.00</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>...</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Cash</td>\n",
+       "      <td>None</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>None</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>None</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>6ddcb0bf4a7038e12733b9871146500614ec173e</td>\n",
+       "      <td>2130bc5fd239a4e3b304662424fb4cc7db0ca7abf78cc5...</td>\n",
+       "      <td>2013-07-21 15:45:00+00:00</td>\n",
+       "      <td>2013-07-21 15:45:00+00:00</td>\n",
+       "      <td>0</td>\n",
+       "      <td>0.01</td>\n",
+       "      <td>17031841000</td>\n",
+       "      <td>17031841000</td>\n",
+       "      <td>33</td>\n",
+       "      <td>33</td>\n",
+       "      <td>...</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>NaN</td>\n",
+       "      <td>Cash</td>\n",
+       "      <td>None</td>\n",
+       "      <td>41.849247</td>\n",
+       "      <td>-87.624135</td>\n",
+       "      <td>POINT (-87.6241352979 41.84924675450001)</td>\n",
+       "      <td>41.849247</td>\n",
+       "      <td>-87.624135</td>\n",
+       "      <td>POINT (-87.6241352979 41.84924675450001)</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>5 rows × 23 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "                                 unique_key  \\\n",
+       "0  515b9a6d5234a4d1fb559dca27b3e1cc541a342d   \n",
+       "1  b1142c1c2c66367edf9a8909815a171955954fb1   \n",
+       "2  1117a97ec6e4fc4444af5e4df4123859a84590bc   \n",
+       "3  ca1131c8e2ba0ed7a2a606b416050a55cd411654   \n",
+       "4  6ddcb0bf4a7038e12733b9871146500614ec173e   \n",
+       "\n",
+       "                                             taxi_id  \\\n",
+       "0  4bb55b69e710d1792f5fd4888001f4ff0ce34040f976f8...   \n",
+       "1  a945379688097db2f2e6117c99b1431b6eba73c4bcfea8...   \n",
+       "2  332d91df72ca990499bcd315dda5decb444abfd0cb3875...   \n",
+       "3  332d91df72ca990499bcd315dda5decb444abfd0cb3875...   \n",
+       "4  2130bc5fd239a4e3b304662424fb4cc7db0ca7abf78cc5...   \n",
+       "\n",
+       "       trip_start_timestamp        trip_end_timestamp  trip_seconds  \\\n",
+       "0 2013-06-24 06:15:00+00:00 2013-06-24 06:15:00+00:00            60   \n",
+       "1 2013-08-11 11:15:00+00:00 2013-08-11 11:30:00+00:00           960   \n",
+       "2 2013-09-17 09:00:00+00:00 2013-09-17 09:00:00+00:00           180   \n",
+       "3 2013-09-17 09:00:00+00:00 2013-09-17 09:00:00+00:00            60   \n",
+       "4 2013-07-21 15:45:00+00:00 2013-07-21 15:45:00+00:00             0   \n",
+       "\n",
+       "   trip_miles  pickup_census_tract  dropoff_census_tract  \\\n",
+       "0        0.04                 <NA>                  <NA>   \n",
+       "1        0.43                 <NA>                  <NA>   \n",
+       "2        0.00                 <NA>                  <NA>   \n",
+       "3        0.00                 <NA>                  <NA>   \n",
+       "4        0.01          17031841000           17031841000   \n",
+       "\n",
+       "   pickup_community_area  dropoff_community_area  ...  extras  trip_total  \\\n",
+       "0                      1                      77  ...     NaN         NaN   \n",
+       "1                      7                       3  ...     NaN         NaN   \n",
+       "2                   <NA>                    <NA>  ...     NaN         NaN   \n",
+       "3                   <NA>                    <NA>  ...     NaN         NaN   \n",
+       "4                     33                      33  ...     NaN         NaN   \n",
+       "\n",
+       "   payment_type  company  pickup_latitude pickup_longitude  \\\n",
+       "0          Cash     None        42.009623       -87.670167   \n",
+       "1          Cash     None        41.922686       -87.649489   \n",
+       "2          Cash     None              NaN              NaN   \n",
+       "3          Cash     None              NaN              NaN   \n",
+       "4          Cash     None        41.849247       -87.624135   \n",
+       "\n",
+       "                            pickup_location  dropoff_latitude  \\\n",
+       "0  POINT (-87.67016685690001 42.0096228806)         41.986712   \n",
+       "1      POINT (-87.6494887289 41.9226862843)         41.965812   \n",
+       "2                                      None               NaN   \n",
+       "3                                      None               NaN   \n",
+       "4  POINT (-87.6241352979 41.84924675450001)         41.849247   \n",
+       "\n",
+       "   dropoff_longitude                          dropoff_location  \n",
+       "0         -87.663416      POINT (-87.6634164054 41.9867117999)  \n",
+       "1         -87.655879        POINT (-87.6558787862 41.96581197)  \n",
+       "2                NaN                                      None  \n",
+       "3                NaN                                      None  \n",
+       "4         -87.624135  POINT (-87.6241352979 41.84924675450001)  \n",
+       "\n",
+       "[5 rows x 23 columns]"
+      ]
+     },
+     "execution_count": 2,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from google.cloud import bigquery\n",
+    "\n",
+    "# Create a \"Client\" object\n",
+    "client = bigquery.Client()\n",
+    "\n",
+    "# Construct a reference to the \"chicago_taxi_trips\" dataset\n",
+    "dataset_ref = client.dataset(\"chicago_taxi_trips\", project=\"bigquery-public-data\")\n",
+    "\n",
+    "# API request - fetch the dataset\n",
+    "dataset = client.get_dataset(dataset_ref)\n",
+    "\n",
+    "# Construct a reference to the \"taxi_trips\" table\n",
+    "table_ref = dataset_ref.table(\"taxi_trips\")\n",
+    "\n",
+    "# API request - fetch the table\n",
+    "table = client.get_table(table_ref)\n",
+    "\n",
+    "# Preview the first five lines of the table\n",
+    "client.list_rows(table, max_results=5).to_dataframe()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "74637033",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003237,
+     "end_time": "2025-04-16T17:06:13.601028",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:13.597791",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Exercises\n",
+    "\n",
+    "### 1) How can you predict the demand for taxis?\n",
+    "\n",
+    "Say you work for a taxi company, and you're interested in predicting the demand for taxis.  Towards this goal, you'd like to create a plot that shows a rolling average of the daily number of taxi trips.  Amend the (partial) query below to return a DataFrame with two columns:\n",
+    "- `trip_date` - contains one entry for each date from January 1, 2016, to March 31, 2016.\n",
+    "- `avg_num_trips` - shows the average number of daily trips, calculated over a window including the value for the current date, along with the values for the preceding 3 days and the following 3 days, as long as the days fit within the three-month time frame.  For instance, when calculating the value in this column for January 3, 2016, the window will include the number of trips for the preceding 2 days, the current date, and the following 3 days.\n",
+    "\n",
+    "This query is partially completed for you, and you need only write the part that calculates the `avg_num_trips` column.  Note that this query uses a common table expression (CTE); if you need to review how to use CTEs, you're encouraged to check out [this tutorial](https://www.kaggle.com/dansbecker/as-with) in the [Intro to SQL](https://www.kaggle.com/learn/intro-to-sql) course."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "0392484a",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-16T17:06:13.608981Z",
+     "iopub.status.busy": "2025-04-16T17:06:13.608426Z",
+     "iopub.status.idle": "2025-04-16T17:06:13.884639Z",
+     "shell.execute_reply": "2025-04-16T17:06:13.883852Z"
+    },
+    "papermill": {
+     "duration": 0.281647,
+     "end_time": "2025-04-16T17:06:13.885919",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:13.604272",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "application/javascript": [
+       "parent.postMessage({\"jupyterEvent\": \"custom.exercise_interaction\", \"data\": {\"outcomeType\": 2, \"failureMessage\": \"You don't have a valid query yet.  Try again.\", \"interactionType\": 1, \"questionType\": 2, \"questionId\": \"1_TaxiDemand\", \"learnToolsVersion\": \"0.3.5\", \"valueTowardsCompletion\": 0.0, \"exceptionClass\": \"\", \"trace\": \"\"}}, \"*\")"
+      ],
+      "text/plain": [
+       "<IPython.core.display.Javascript object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/markdown": [
+       "<span style=\"color:#cc3333\">Incorrect:</span> You don't have a valid query yet.  Try again."
+      ],
+      "text/plain": [
+       "Incorrect: You don't have a valid query yet.  Try again."
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Fill in the blank below\n",
+    "avg_num_trips_query = \"\"\"\n",
+    "                      WITH trips_by_day AS\n",
+    "                      (\n",
+    "                      SELECT DATE(trip_start_timestamp) AS trip_date,\n",
+    "                          COUNT(*) as num_trips\n",
+    "                      FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`\n",
+    "                      WHERE trip_start_timestamp > '2016-01-01' AND trip_start_timestamp < '2016-04-01'\n",
+    "                      GROUP BY trip_date\n",
+    "                      ORDER BY trip_date\n",
+    "                      )\n",
+    "                      SELECT trip_date,\n",
+    "                          ____\n",
+    "                          OVER (\n",
+    "                               ____\n",
+    "                               ____\n",
+    "                               ) AS avg_num_trips\n",
+    "                      FROM trips_by_day\n",
+    "                      \"\"\"\n",
+    "\n",
+    "# Check your answer\n",
+    "q_1.check()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "f572dd28",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-16T17:06:13.894993Z",
+     "iopub.status.busy": "2025-04-16T17:06:13.894312Z",
+     "iopub.status.idle": "2025-04-16T17:06:13.898193Z",
+     "shell.execute_reply": "2025-04-16T17:06:13.897382Z"
+    },
+    "papermill": {
+     "duration": 0.009888,
+     "end_time": "2025-04-16T17:06:13.899559",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:13.889671",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Lines below will give you a hint or solution code\n",
+    "#q_1.hint()\n",
+    "#q_1.solution()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "a2459bfb",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003349,
+     "end_time": "2025-04-16T17:06:13.906696",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:13.903347",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "### 2) Can you separate and order trips by community area?\n",
+    "\n",
+    "The query below returns a DataFrame with three columns from the table: `pickup_community_area`, `trip_start_timestamp`, and `trip_end_timestamp`.  \n",
+    "\n",
+    "Amend the query to return an additional column called `trip_number` which shows the order in which the trips were taken from their respective community areas.  So, the first trip of the day originating from community area 1 should receive a value of 1; the second trip of the day from the same area should receive a value of 2.  Likewise, the first trip of the day from community area 2 should receive a value of 1, and so on.\n",
+    "\n",
+    "Note that there are many numbering functions that can be used to solve this problem (depending on how you want to deal with trips that started at the same time from the same community area); to answer this question, please use the **RANK()** function."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "6915100b",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-16T17:06:13.915270Z",
+     "iopub.status.busy": "2025-04-16T17:06:13.914501Z",
+     "iopub.status.idle": "2025-04-16T17:06:17.050584Z",
+     "shell.execute_reply": "2025-04-16T17:06:17.049794Z"
+    },
+    "papermill": {
+     "duration": 3.141823,
+     "end_time": "2025-04-16T17:06:17.052007",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:13.910184",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "/usr/local/lib/python3.11/dist-packages/google/cloud/bigquery/table.py:1727: UserWarning: BigQuery Storage module not found, fetch data with the REST endpoint instead.\n",
+      "  warnings.warn(\n"
+     ]
+    },
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>pickup_community_area</th>\n",
+       "      <th>trip_start_timestamp</th>\n",
+       "      <th>trip_end_timestamp</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>0</th>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>2013-10-03 06:15:00+00:00</td>\n",
+       "      <td>2013-10-03 06:15:00+00:00</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>1</th>\n",
+       "      <td>&lt;NA&gt;</td>\n",
+       "      <td>2013-10-03 02:30:00+00:00</td>\n",
+       "      <td>2013-10-03 02:30:00+00:00</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2</th>\n",
+       "      <td>58</td>\n",
+       "      <td>2013-10-03 01:15:00+00:00</td>\n",
+       "      <td>2013-10-03 01:30:00+00:00</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>3</th>\n",
+       "      <td>32</td>\n",
+       "      <td>2013-10-03 02:15:00+00:00</td>\n",
+       "      <td>2013-10-03 02:45:00+00:00</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>4</th>\n",
+       "      <td>32</td>\n",
+       "      <td>2013-10-03 04:15:00+00:00</td>\n",
+       "      <td>2013-10-03 04:30:00+00:00</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "   pickup_community_area      trip_start_timestamp        trip_end_timestamp\n",
+       "0                   <NA> 2013-10-03 06:15:00+00:00 2013-10-03 06:15:00+00:00\n",
+       "1                   <NA> 2013-10-03 02:30:00+00:00 2013-10-03 02:30:00+00:00\n",
+       "2                     58 2013-10-03 01:15:00+00:00 2013-10-03 01:30:00+00:00\n",
+       "3                     32 2013-10-03 02:15:00+00:00 2013-10-03 02:45:00+00:00\n",
+       "4                     32 2013-10-03 04:15:00+00:00 2013-10-03 04:30:00+00:00"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "application/javascript": [
+       "parent.postMessage({\"jupyterEvent\": \"custom.exercise_interaction\", \"data\": {\"outcomeType\": 2, \"failureMessage\": \"There are many different numbering functions that enumerate the rows in the input. For this exercise, please use the **RANK()** function.\", \"interactionType\": 1, \"questionType\": 2, \"questionId\": \"2_CommunityArea\", \"learnToolsVersion\": \"0.3.5\", \"valueTowardsCompletion\": 0.0, \"exceptionClass\": \"\", \"trace\": \"\"}}, \"*\")"
+      ],
+      "text/plain": [
+       "<IPython.core.display.Javascript object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/markdown": [
+       "<span style=\"color:#cc3333\">Incorrect:</span> There are many different numbering functions that enumerate the rows in the input. For this exercise, please use the **RANK()** function."
+      ],
+      "text/plain": [
+       "Incorrect: There are many different numbering functions that enumerate the rows in the input. For this exercise, please use the **RANK()** function."
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Amend the query below\n",
+    "trip_number_query = \"\"\"\n",
+    "                    SELECT pickup_community_area,\n",
+    "                        trip_start_timestamp,\n",
+    "                        trip_end_timestamp\n",
+    "                    FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`\n",
+    "                    WHERE DATE(trip_start_timestamp) = '2013-10-03'\n",
+    "                    \"\"\"\n",
+    "\n",
+    "# Check your answer\n",
+    "q_2.check()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "503f1237",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-16T17:06:17.061343Z",
+     "iopub.status.busy": "2025-04-16T17:06:17.061057Z",
+     "iopub.status.idle": "2025-04-16T17:06:17.064609Z",
+     "shell.execute_reply": "2025-04-16T17:06:17.063987Z"
+    },
+    "papermill": {
+     "duration": 0.00952,
+     "end_time": "2025-04-16T17:06:17.065803",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:17.056283",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Lines below will give you a hint or solution code\n",
+    "#q_2.hint()\n",
+    "#q_2.solution()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "44c1cb3c",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003738,
+     "end_time": "2025-04-16T17:06:17.073811",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:17.070073",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "### 3) How much time elapses between trips?\n",
+    "\n",
+    "The (partial) query in the code cell below shows, for each trip in the selected time frame, the corresponding `taxi_id`, `trip_start_timestamp`, and `trip_end_timestamp`. \n",
+    "\n",
+    "Your task in this exercise is to edit the query to include an additional `prev_break` column that shows the length of the break (in minutes) that the driver had before each trip started (this corresponds to the time between `trip_start_timestamp` of the current trip and `trip_end_timestamp` of the previous trip).  Partition the calculation by `taxi_id`, and order the results within each partition by `trip_start_timestamp`.\n",
+    "\n",
+    "Some sample results are shown below, where all rows correspond to the same driver (or `taxi_id`).  Take the time now to make sure that the values in the `prev_break` column make sense to you!\n",
+    "\n",
+    "![first_commands](https://storage.googleapis.com/kaggle-media/learn/images/qjvQzg8.png)\n",
+    "\n",
+    "Note that the first trip of the day for each driver should have a value of **NaN** (not a number) in the `prev_break` column."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "e4a373f6",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-16T17:06:17.083622Z",
+     "iopub.status.busy": "2025-04-16T17:06:17.083328Z",
+     "iopub.status.idle": "2025-04-16T17:06:17.318205Z",
+     "shell.execute_reply": "2025-04-16T17:06:17.317330Z"
+    },
+    "papermill": {
+     "duration": 0.241583,
+     "end_time": "2025-04-16T17:06:17.319691",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:17.078108",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "application/javascript": [
+       "parent.postMessage({\"jupyterEvent\": \"custom.exercise_interaction\", \"data\": {\"outcomeType\": 2, \"failureMessage\": \"You don't have a valid query yet.  Try again.\", \"interactionType\": 1, \"questionType\": 2, \"questionId\": \"3_BreakTime\", \"learnToolsVersion\": \"0.3.5\", \"valueTowardsCompletion\": 0.0, \"exceptionClass\": \"\", \"trace\": \"\"}}, \"*\")"
+      ],
+      "text/plain": [
+       "<IPython.core.display.Javascript object>"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/markdown": [
+       "<span style=\"color:#cc3333\">Incorrect:</span> You don't have a valid query yet.  Try again."
+      ],
+      "text/plain": [
+       "Incorrect: You don't have a valid query yet.  Try again."
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "# Fill in the blanks below\n",
+    "break_time_query = \"\"\"\n",
+    "                   SELECT taxi_id,\n",
+    "                       trip_start_timestamp,\n",
+    "                       trip_end_timestamp,\n",
+    "                       TIMESTAMP_DIFF(\n",
+    "                           trip_start_timestamp, \n",
+    "                           ____ \n",
+    "                               OVER (\n",
+    "                                    PARTITION BY ____ \n",
+    "                                    ORDER BY ____), \n",
+    "                           MINUTE) as prev_break\n",
+    "                   FROM `bigquery-public-data.chicago_taxi_trips.taxi_trips`\n",
+    "                   WHERE DATE(trip_start_timestamp) = '2013-10-03' \n",
+    "                   \"\"\"\n",
+    "\n",
+    "# Check your answer\n",
+    "q_3.check()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "c93165d2",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-04-16T17:06:17.330709Z",
+     "iopub.status.busy": "2025-04-16T17:06:17.330384Z",
+     "iopub.status.idle": "2025-04-16T17:06:17.334253Z",
+     "shell.execute_reply": "2025-04-16T17:06:17.333452Z"
+    },
+    "papermill": {
+     "duration": 0.010753,
+     "end_time": "2025-04-16T17:06:17.335605",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:17.324852",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Lines below will give you a hint or solution code\n",
+    "#q_3.hint()\n",
+    "#q_3.solution()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "73d768ad",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004046,
+     "end_time": "2025-04-16T17:06:17.344081",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:17.340035",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Keep going\n",
+    "\n",
+    "Move on to learn how to query **[nested and repeated data](https://www.kaggle.com/alexisbcook/nested-and-repeated-data)**."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "8dd98c5c",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003925,
+     "end_time": "2025-04-16T17:06:17.352224",
+     "exception": false,
+     "start_time": "2025-04-16T17:06:17.348299",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "---\n",
+    "\n",
+    "\n",
+    "\n",
+    "\n",
+    "*Have questions or comments? Visit the [course discussion forum](https://www.kaggle.com/learn/advanced-sql/discussion) to chat with other learners.*"
+   ]
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [
+    {
+     "datasetId": 22219,
+     "sourceId": 28536,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "isGpuEnabled": false,
+   "isInternetEnabled": false,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.11"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 78.082821,
+   "end_time": "2025-04-16T17:06:20.298429",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-04-16T17:05:02.215608",
+   "version": "2.6.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
